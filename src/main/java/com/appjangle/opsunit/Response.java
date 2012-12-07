@@ -14,6 +14,6 @@ public interface Response {
 		public void onFailure(Throwable t);
 	}
 
-	public void run(Callback callback);
+	public void run(JobContext context, Callback callback);
 
 }

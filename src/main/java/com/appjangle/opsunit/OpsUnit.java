@@ -10,9 +10,9 @@ public class OpsUnit {
 
 	public static JobManager createManager(final List<Job> jobs,
 			final Concurrency concurrency,
-			final JobExecutorFactory executorFactory, final JobListener listener) {
+			final JobExecutorFactory executorFactory, final JobContext context) {
 		return new DefaultJobManager(jobs, concurrency, executorFactory,
-				listener);
+				context);
 	}
 
 }

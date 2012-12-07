@@ -7,19 +7,19 @@ import org.junit.runner.JUnitCore;
 import org.junit.runner.Result;
 
 import com.appjangle.opsunit.Job;
+import com.appjangle.opsunit.JobContext;
 import com.appjangle.opsunit.JobExecutor;
-import com.appjangle.opsunit.JobListener;
 import com.appjangle.opsunit.Response;
 import com.appjangle.opsunit.Response.Callback;
 
 public class JUnitJobExecutor implements JobExecutor {
 
 	private final Job job;
-	private final JobListener listener;
+	private final JobContext listener;
 
 	@Override
 	public void run() {
-		listener.onStartJob(job);
+		listener.getListener().onStartJob(job);
 		runTests(job.getResponses());
 	}
 
@@ -27,19 +27,19 @@ public class JUnitJobExecutor implements JobExecutor {
 
 		// running out of possible ways to fix this execution
 		if (availableResponses.size() == 0) {
-			listener.onJobFailed(job);
+			listener.getListener().onJobFailed(job);
 			return;
 		}
 
 		for (final Class<?> test : job.getTests()) {
-			listener.onStartTest(job, test);
+			listener.getListener().onStartTest(job, test);
 
 			final Result result = JUnitCore.runClasses(test);
 
 			if (result.getFailureCount() > 0) {
-				listener.onTestFailed(job, test, result.getFailures().get(0)
-						.getMessage(), result.getFailures().get(0)
-						.getException());
+				listener.getListener().onTestFailed(job, test,
+						result.getFailures().get(0).getMessage(),
+						result.getFailures().get(0).getException());
 				attemptFix(availableResponses);
 				return;
 			}
@@ -55,7 +55,7 @@ public class JUnitJobExecutor implements JobExecutor {
 
 		remainingResponses.remove(0);
 
-		response.run(new Callback() {
+		response.run(listener, new Callback() {
 
 			@Override
 			public void onSuccess() {
@@ -64,17 +64,17 @@ public class JUnitJobExecutor implements JobExecutor {
 
 			@Override
 			public void onFailure(final Throwable t) {
-				listener.onResponseFailed(job, response, t);
-				listener.onJobFailed(job);
+				listener.getListener().onResponseFailed(job, response, t);
+				listener.getListener().onJobFailed(job);
 			}
 		});
 
 	}
 
-	public JUnitJobExecutor(final Job job, final JobListener listener) {
+	public JUnitJobExecutor(final Job job, final JobContext context) {
 		super();
 		this.job = job;
-		this.listener = listener;
+		this.listener = context;
 	}
 
 }

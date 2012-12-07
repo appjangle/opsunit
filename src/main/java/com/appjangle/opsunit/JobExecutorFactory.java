@@ -8,6 +8,6 @@ package com.appjangle.opsunit;
  */
 public interface JobExecutorFactory {
 
-	public JobExecutor createExecutor(Job job, JobListener listener);
+	public JobExecutor createExecutor(Job job, JobContext context);
 
 }

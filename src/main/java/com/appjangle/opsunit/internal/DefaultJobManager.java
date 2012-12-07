@@ -8,8 +8,8 @@ import one.utils.concurrent.OneTimer;
 import one.utils.server.ShutdownCallback;
 
 import com.appjangle.opsunit.Job;
+import com.appjangle.opsunit.JobContext;
 import com.appjangle.opsunit.JobExecutorFactory;
-import com.appjangle.opsunit.JobListener;
 import com.appjangle.opsunit.JobManager;
 
 public class DefaultJobManager implements JobManager {
@@ -17,7 +17,7 @@ public class DefaultJobManager implements JobManager {
 	private final List<Job> jobs;
 	private final Concurrency concurrency;
 	private final JobExecutorFactory executorFactory;
-	private final JobListener listener;
+	private final JobContext listener;
 
 	private final List<OneTimer> timers;
 
@@ -65,11 +65,12 @@ public class DefaultJobManager implements JobManager {
 
 	public DefaultJobManager(final List<Job> jobs,
 			final Concurrency concurrency,
-			final JobExecutorFactory executorFactory, final JobListener listener) {
+			final JobExecutorFactory executorFactory,
+			final JobContext jobContext) {
 		super();
 		this.jobs = jobs;
 		this.concurrency = concurrency;
-		this.listener = listener;
+		this.listener = jobContext;
 		this.executorFactory = executorFactory;
 		this.timers = new LinkedList<OneTimer>();
 	}
