@@ -9,6 +9,8 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import com.appjangle.opsunit.Job;
+import com.appjangle.opsunit.JobContext;
+import com.appjangle.opsunit.JobListener;
 import com.appjangle.opsunit.JobManager;
 import com.appjangle.opsunit.Response;
 import com.appjangle.opsunit.jre.OpsUnitJre;
@@ -39,7 +41,8 @@ public class TestJobsWithoutFailure {
 				responses.add(new Response() {
 
 					@Override
-					public void run(final Callback callback) {
+					public void run(final JobContext context,
+							final Callback callback) {
 						callback.onFailure(new Exception(
 								"Response should not be triggered in this test case."));
 					}
@@ -62,13 +65,21 @@ public class TestJobsWithoutFailure {
 		final List<Class<?>> testsDone = Collections
 				.synchronizedList(new ArrayList<Class<?>>(0));
 		final JobManager manager = OpsUnitJre.createManager(jobs,
-				new DefaultJobListener() {
+				new JobContext() {
 
 					@Override
-					public void onStartTest(final Job j, final Class<?> test) {
-						testsDone.add(test);
-					}
+					public JobListener getListener() {
 
+						return new DefaultJobListener() {
+
+							@Override
+							public void onStartTest(final Job j,
+									final Class<?> test) {
+								testsDone.add(test);
+							}
+
+						};
+					}
 				});
 
 		manager.start();
