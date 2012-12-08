@@ -7,8 +7,8 @@ import com.appjangle.opsunit.Response;
 public class DefaultJobListener implements JobListener {
 
 	@Override
-	public void onJobFailed(final Job j) {
-		throw new RuntimeException("Job failed: " + j.getName());
+	public void onJobFailed(final Job j, final Throwable lastException) {
+		throw new RuntimeException("Job failed: " + j.getName(), lastException);
 	}
 
 	@Override

@@ -14,7 +14,7 @@ public interface JobListener {
 	 * 
 	 * @param j
 	 */
-	public void onJobFailed(final Job j);
+	public void onJobFailed(final Job j, Throwable lastException);
 
 	/**
 	 * Whenever an unexpected failure occurs.
