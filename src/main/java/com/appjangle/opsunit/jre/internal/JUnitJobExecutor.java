@@ -27,7 +27,7 @@ public class JUnitJobExecutor implements JobExecutor {
 			final JobCallback callback) {
 
 		for (final Class<?> test : job.getTests()) {
-			System.out.println("run test " + test);
+
 			listener.getListener().onStartTest(job, test);
 
 			final Result result = JUnitCore.runClasses(test);
@@ -36,7 +36,8 @@ public class JUnitJobExecutor implements JobExecutor {
 				listener.getListener().onTestFailed(job, test,
 						result.getFailures().get(0).getMessage(),
 						result.getFailures().get(0).getException());
-				attemptFix(availableResponses, callback);
+				attemptFix(availableResponses, result.getFailures().get(0)
+						.getException(), callback);
 				return;
 			}
 		}
@@ -45,11 +46,10 @@ public class JUnitJobExecutor implements JobExecutor {
 	}
 
 	private final void attemptFix(final List<Response> responses,
-			final JobCallback callback) {
+			final Throwable lastFailure, final JobCallback callback) {
 		// running out of possible ways to fix this execution
 		if (responses.size() == 0) {
-			listener.getListener().onJobFailed(job,
-					new Exception("All responses have been exhausted."));
+			listener.getListener().onJobFailed(job, lastFailure);
 			callback.onDone();
 			return;
 		}

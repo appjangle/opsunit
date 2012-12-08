@@ -13,6 +13,9 @@ public interface JobListener {
 	 * to fix it.
 	 * 
 	 * @param j
+	 * @param lastException
+	 *            The last exception which was either thrown by a failed
+	 *            response or by a failed test.
 	 */
 	public void onJobFailed(final Job j, Throwable lastException);
 
