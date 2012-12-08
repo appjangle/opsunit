@@ -6,6 +6,12 @@ package com.appjangle.opsunit;
  * @author mroh004
  * 
  */
-public interface JobExecutor extends Runnable {
+public interface JobExecutor {
+
+	public interface JobCallback {
+		public void onDone();
+	}
+
+	public void run(JobCallback callback);
 
 }

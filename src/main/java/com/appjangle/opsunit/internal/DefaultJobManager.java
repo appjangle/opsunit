@@ -9,6 +9,8 @@ import one.utils.server.ShutdownCallback;
 
 import com.appjangle.opsunit.Job;
 import com.appjangle.opsunit.JobContext;
+import com.appjangle.opsunit.JobExecutor;
+import com.appjangle.opsunit.JobExecutor.JobCallback;
 import com.appjangle.opsunit.JobExecutorFactory;
 import com.appjangle.opsunit.JobManager;
 
@@ -18,7 +20,7 @@ public class DefaultJobManager implements JobManager {
 	private final Concurrency concurrency;
 	private final JobExecutorFactory executorFactory;
 	private final JobContext listener;
-
+	private final List<JobExecutor> activeExecutors;
 	private final List<OneTimer> timers;
 
 	private volatile boolean started = false;
@@ -33,9 +35,27 @@ public class DefaultJobManager implements JobManager {
 
 		for (final Job job : jobs) {
 
+			final JobExecutor executor = executorFactory.createExecutor(job,
+					listener);
+
 			final OneTimer jobTimer = concurrency.newTimer().scheduleRepeating(
-					0, job.getFrequency(),
-					executorFactory.createExecutor(job, listener));
+					0, job.getFrequency(), new Runnable() {
+
+						@Override
+						public void run() {
+							if (activeExecutors.contains(executor)) {
+								return;
+							}
+							activeExecutors.add(executor);
+							executor.run(new JobCallback() {
+
+								@Override
+								public void onDone() {
+									activeExecutors.remove(executor);
+								}
+							});
+						}
+					});
 			this.timers.add(jobTimer);
 		}
 
@@ -73,6 +93,8 @@ public class DefaultJobManager implements JobManager {
 		this.listener = jobContext;
 		this.executorFactory = executorFactory;
 		this.timers = new LinkedList<OneTimer>();
+		this.activeExecutors = concurrency.newCollection().newThreadSafeList(
+				JobExecutor.class);
 	}
 
 }

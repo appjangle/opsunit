@@ -18,16 +18,18 @@ public class JUnitJobExecutor implements JobExecutor {
 	private final JobContext listener;
 
 	@Override
-	public void run() {
+	public void run(final JobCallback callback) {
 		listener.getListener().onStartJob(job);
-		runTests(job.getResponses());
+		runTests(job.getResponses(), callback);
 	}
 
-	private final void runTests(final List<Response> availableResponses) {
+	private final void runTests(final List<Response> availableResponses,
+			final JobCallback callback) {
 
 		// running out of possible ways to fix this execution
 		if (availableResponses.size() == 0) {
 			listener.getListener().onJobFailed(job);
+			callback.onDone();
 			return;
 		}
 
@@ -40,14 +42,16 @@ public class JUnitJobExecutor implements JobExecutor {
 				listener.getListener().onTestFailed(job, test,
 						result.getFailures().get(0).getMessage(),
 						result.getFailures().get(0).getException());
-				attemptFix(availableResponses);
+				attemptFix(availableResponses, callback);
 				return;
 			}
 		}
+		callback.onDone();
 
 	}
 
-	private final void attemptFix(final List<Response> responses) {
+	private final void attemptFix(final List<Response> responses,
+			final JobCallback callback) {
 		final Response response = responses.get(0);
 
 		final List<Response> remainingResponses = new ArrayList<Response>(
@@ -59,13 +63,14 @@ public class JUnitJobExecutor implements JobExecutor {
 
 			@Override
 			public void onSuccess() {
-				runTests(remainingResponses);
+				runTests(remainingResponses, callback);
 			}
 
 			@Override
 			public void onFailure(final Throwable t) {
 				listener.getListener().onResponseFailed(job, response, t);
 				listener.getListener().onJobFailed(job);
+				callback.onDone();
 			}
 		});
 
