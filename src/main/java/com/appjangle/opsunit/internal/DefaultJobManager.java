@@ -55,10 +55,12 @@ public class DefaultJobManager implements JobManager {
 								return;
 							}
 							activeExecutors.add(executor);
+
 							executor.run(new JobCallback() {
 
 								@Override
 								public void onDone() {
+
 									activeExecutors.remove(executor);
 								}
 							});
@@ -89,10 +91,13 @@ public class DefaultJobManager implements JobManager {
 		timers.clear();
 
 		while (activeExecutors.size() > 0) {
+			System.out.println("active: " + activeExecutors.size());
+			System.out.println("active: " + activeExecutors);
 			Thread.yield();
 		}
 
 		started = false;
+		stopping = false;
 
 		System.out.println("opsunit stopped.");
 		callback.onShutdownComplete();

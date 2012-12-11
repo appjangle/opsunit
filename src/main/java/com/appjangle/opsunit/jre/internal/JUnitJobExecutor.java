@@ -50,6 +50,7 @@ public class JUnitJobExecutor implements JobExecutor {
 		// running out of possible ways to fix this execution
 		if (responses.size() == 0) {
 			listener.getListener().onJobFailed(job, lastFailure);
+
 			callback.onDone();
 			return;
 		}
@@ -79,8 +80,14 @@ public class JUnitJobExecutor implements JobExecutor {
 			@Override
 			public void onFailure(final Throwable t) {
 				listener.getListener().onResponseFailed(job, response, t);
-				listener.getListener().onJobFailed(job, t);
-				callback.onDone();
+				new Thread() {
+
+					@Override
+					public void run() {
+						runTests(remainingResponses, callback);
+					}
+
+				}.start();
 			}
 		});
 
