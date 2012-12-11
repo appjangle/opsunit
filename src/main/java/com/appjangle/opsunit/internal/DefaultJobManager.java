@@ -91,15 +91,20 @@ public class DefaultJobManager implements JobManager {
 		timers.clear();
 
 		while (activeExecutors.size() > 0) {
-			System.out.println("active: " + activeExecutors.size());
-			System.out.println("active: " + activeExecutors);
+			// System.out.println(activeExecutors.size());
+			try {
+				Thread.sleep(100);
+			} catch (final InterruptedException e) {
+
+				callback.onFailure(e);
+				return;
+			}
 			Thread.yield();
 		}
 
 		started = false;
 		stopping = false;
 
-		System.out.println("opsunit stopped.");
 		callback.onShutdownComplete();
 
 	}
