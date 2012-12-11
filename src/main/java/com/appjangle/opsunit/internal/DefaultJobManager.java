@@ -24,13 +24,18 @@ public class DefaultJobManager implements JobManager {
 	private final List<OneTimer> timers;
 
 	private volatile boolean started = false;
+	private volatile boolean stopping = false;
 
 	@Override
 	public void start() {
 		if (started) {
 			throw new IllegalStateException(
 					"Cannot start an already started job manager.");
+		}
 
+		if (stopping) {
+			throw new IllegalStateException(
+					"Cannot start an job manager, which is shutting down.");
 		}
 
 		for (final Job job : jobs) {
@@ -43,6 +48,9 @@ public class DefaultJobManager implements JobManager {
 
 						@Override
 						public void run() {
+							if (stopping) {
+								return;
+							}
 							if (activeExecutors.contains(executor)) {
 								return;
 							}
@@ -70,6 +78,8 @@ public class DefaultJobManager implements JobManager {
 
 		}
 
+		stopping = true;
+
 		for (final OneTimer timer : timers) {
 
 			timer.stop();
@@ -78,7 +88,13 @@ public class DefaultJobManager implements JobManager {
 
 		timers.clear();
 
+		while (activeExecutors.size() > 0) {
+			Thread.yield();
+		}
+
 		started = false;
+
+		System.out.println("opsunit stopped.");
 		callback.onShutdownComplete();
 
 	}
