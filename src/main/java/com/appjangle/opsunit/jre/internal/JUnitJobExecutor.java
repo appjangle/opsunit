@@ -26,21 +26,28 @@ public class JUnitJobExecutor implements JobExecutor {
 	private final void runTests(final List<Response> availableResponses,
 			final JobCallback callback) {
 
-		for (final Class<?> test : job.getTests()) {
+		try {
+			for (final Class<?> test : job.getTests()) {
 
-			listener.getListener().onStartTest(job, test);
+				listener.getListener().onStartTest(job, test);
 
-			final Result result = JUnitCore.runClasses(test);
+				final Result result = JUnitCore.runClasses(test);
 
-			if (result.getFailureCount() > 0) {
-				listener.getListener().onTestFailed(job, test,
-						result.getFailures().get(0).getMessage(),
-						result.getFailures().get(0).getException());
+				if (result.getFailureCount() > 0) {
+					listener.getListener().onTestFailed(job, test,
+							result.getFailures().get(0).getMessage(),
+							result.getFailures().get(0).getException());
 
-				attemptFix(availableResponses, result.getFailures().get(0)
-						.getException(), callback);
-				return;
+					attemptFix(availableResponses, result.getFailures().get(0)
+							.getException(), callback);
+					return;
+				}
 			}
+		} catch (final Throwable t) {
+			listener.getListener().onJobFailed(job,
+					new Exception("Could not run tests: " + job.getTests(), t));
+			callback.onDone();
+			return;
 		}
 		callback.onDone();
 
@@ -48,50 +55,60 @@ public class JUnitJobExecutor implements JobExecutor {
 
 	private final void attemptFix(final List<Response> responses,
 			final Throwable lastFailure, final JobCallback callback) {
-		// running out of possible ways to fix this execution
-		if (responses.size() == 0) {
+		try {
+			// running out of possible ways to fix this execution
+			if (responses.size() == 0) {
 
-			listener.getListener().onJobFailed(job, lastFailure);
+				listener.getListener().onJobFailed(job, lastFailure);
 
+				callback.onDone();
+				return;
+			}
+
+			final Response response = responses.get(0);
+
+			final List<Response> remainingResponses = new ArrayList<Response>(
+					responses);
+
+			remainingResponses.remove(0);
+
+			response.run(listener, new Callback() {
+
+				@Override
+				public void onSuccess() {
+					new Thread() {
+
+						@Override
+						public void run() {
+							runTests(remainingResponses, callback);
+						}
+
+					}.start();
+
+				}
+
+				@Override
+				public void onFailure(final Throwable t) {
+					listener.getListener().onResponseFailed(job, response, t);
+					new Thread() {
+
+						@Override
+						public void run() {
+							runTests(remainingResponses, callback);
+						}
+
+					}.start();
+				}
+			});
+		} catch (final Throwable t) {
+			listener.getListener()
+					.onJobFailed(
+							job,
+							new Exception("Could not apply responses: "
+									+ responses, t));
 			callback.onDone();
 			return;
 		}
-
-		final Response response = responses.get(0);
-
-		final List<Response> remainingResponses = new ArrayList<Response>(
-				responses);
-
-		remainingResponses.remove(0);
-
-		response.run(listener, new Callback() {
-
-			@Override
-			public void onSuccess() {
-				new Thread() {
-
-					@Override
-					public void run() {
-						runTests(remainingResponses, callback);
-					}
-
-				}.start();
-
-			}
-
-			@Override
-			public void onFailure(final Throwable t) {
-				listener.getListener().onResponseFailed(job, response, t);
-				new Thread() {
-
-					@Override
-					public void run() {
-						runTests(remainingResponses, callback);
-					}
-
-				}.start();
-			}
-		});
 
 	}
 
