@@ -116,6 +116,21 @@ public class JUnitJobExecutor implements JobExecutor {
 		super();
 		this.job = job;
 		this.listener = context;
+
+		// verifying instantiability of test cases
+		for (final Class<?> test : job.getTests()) {
+
+			try {
+				final Object newInstance = test.getConstructors()[0]
+						.newInstance();
+
+				System.out.println("created " + newInstance);
+			} catch (final Throwable e) {
+				new RuntimeException(e);
+			}
+
+		}
+
 	}
 
 }
