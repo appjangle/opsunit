@@ -59,6 +59,8 @@ public class JUnitJobExecutor implements JobExecutor {
 			return;
 		}
 
+		listener.getListener().onJobSuccessfullyCompleted(job);
+
 		callback.onDone();
 
 	}
