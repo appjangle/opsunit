@@ -126,7 +126,7 @@ public class JUnitJobExecutor implements JobExecutor {
 				assert newInstance != null;
 				// System.out.println("created " + newInstance);
 			} catch (final Throwable e) {
-				new RuntimeException(e);
+				throw new RuntimeException(e);
 			}
 
 		}
