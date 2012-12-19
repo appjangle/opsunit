@@ -17,6 +17,8 @@ public class JUnitJobExecutor implements JobExecutor {
 	private final Job job;
 	private final JobContext listener;
 
+	private final static boolean ENABLE_LOG = false;
+
 	@Override
 	public void run(final JobCallback callback) {
 		listener.getListener().onStartJob(job);
@@ -28,10 +30,17 @@ public class JUnitJobExecutor implements JobExecutor {
 
 		try {
 			for (final Class<?> test : job.getTests()) {
-
+				if (ENABLE_LOG) {
+					System.out.println(this + ": Run test: " + test);
+				}
 				listener.getListener().onStartTest(job, test);
 
 				final Result result = JUnitCore.runClasses(test);
+
+				if (ENABLE_LOG) {
+					System.out.println(this + ": Test ran: " + test + " with "
+							+ result.getFailureCount() + " failures.");
+				}
 
 				if (result.getFailureCount() > 0) {
 					listener.getListener().onTestFailed(job, test,
@@ -49,6 +58,7 @@ public class JUnitJobExecutor implements JobExecutor {
 			callback.onDone();
 			return;
 		}
+
 		callback.onDone();
 
 	}
