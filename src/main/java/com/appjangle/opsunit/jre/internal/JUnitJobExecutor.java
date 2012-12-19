@@ -123,8 +123,8 @@ public class JUnitJobExecutor implements JobExecutor {
 			try {
 				final Object newInstance = test.getConstructors()[0]
 						.newInstance();
-
-				System.out.println("created " + newInstance);
+				assert newInstance != null;
+				// System.out.println("created " + newInstance);
 			} catch (final Throwable e) {
 				new RuntimeException(e);
 			}
@@ -132,5 +132,4 @@ public class JUnitJobExecutor implements JobExecutor {
 		}
 
 	}
-
 }
