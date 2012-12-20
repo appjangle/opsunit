@@ -2,6 +2,7 @@ package com.appjangle.opsunit.jre.internal;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.junit.runner.JUnitCore;
 import org.junit.runner.Result;
@@ -17,7 +18,7 @@ public class JUnitJobExecutor implements JobExecutor {
 	private final Job job;
 	private final JobContext listener;
 
-	private final static boolean ENABLE_LOG = false;
+	private final static boolean ENABLE_LOG = true;
 
 	@Override
 	public void run(final JobCallback callback) {
@@ -35,7 +36,53 @@ public class JUnitJobExecutor implements JobExecutor {
 				}
 				listener.getListener().onStartTest(job, test);
 
+				final AtomicBoolean completed = new AtomicBoolean(false);
+				final AtomicBoolean crashed = new AtomicBoolean(false);
+
+				new Thread() {
+
+					@Override
+					public void run() {
+
+						final int timoutInMin = 10;
+						try {
+
+							Thread.sleep(1000 * 60 * timoutInMin);
+						} catch (final InterruptedException e) {
+							throw new RuntimeException(e);
+						}
+
+						if (!completed.get()) {
+							crashed.set(true);
+
+							final Exception e = new Exception("Test [" + test
+									+ "] not completed in timeout limit ("
+									+ timoutInMin + " min).");
+							listener.getListener().onTestFailed(
+									job,
+									test,
+									"Test has not been completed within timeout limit ("
+											+ timoutInMin + " min)", e);
+
+							attemptFix(availableResponses, e, callback);
+						}
+					}
+
+				}.start();
+
 				final Result result = JUnitCore.runClasses(test);
+
+				completed.set(true);
+
+				if (crashed.get()) {
+					if (ENABLE_LOG) {
+						System.out.println(this
+								+ ": Test crashed due to violating timeout: "
+								+ test + " with " + result.getFailureCount()
+								+ " failures.");
+					}
+					return;
+				}
 
 				if (ENABLE_LOG) {
 					System.out.println(this + ": Test ran: " + test + " with "
