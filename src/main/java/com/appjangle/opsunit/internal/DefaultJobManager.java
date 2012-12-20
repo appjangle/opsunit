@@ -62,12 +62,12 @@ public class DefaultJobManager implements JobManager {
 								return;
 							}
 
-							if (activeExecutors.size() > 0) {
-								scheduledExecutors.add(executor);
+							scheduledExecutors.add(executor);
+
+							if (activeExecutors.size() == 0) {
+								runScheduledExecutors();
 								return;
 							}
-
-							runScheduledExecutors();
 
 						}
 					});
@@ -83,6 +83,7 @@ public class DefaultJobManager implements JobManager {
 			scheduledExecutors.remove(0);
 
 			activeExecutors.add(newExecutor);
+
 			newExecutor.run(new JobCallback() {
 
 				@Override
