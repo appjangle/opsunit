@@ -18,7 +18,7 @@ public class JUnitJobExecutor implements JobExecutor {
 	private final Job job;
 	private final JobContext listener;
 
-	private final static boolean ENABLE_LOG = true;
+	private final static boolean ENABLE_LOG = false;
 
 	@Override
 	public void run(final JobCallback callback) {
