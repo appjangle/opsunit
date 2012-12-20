@@ -4,6 +4,8 @@ import java.util.LinkedList;
 import java.util.List;
 
 import one.utils.concurrent.Concurrency;
+import one.utils.concurrent.OneExecutor;
+import one.utils.concurrent.OneExecutor.WhenExecutorShutDown;
 import one.utils.concurrent.OneTimer;
 import one.utils.server.ShutdownCallback;
 
@@ -21,10 +23,12 @@ public class DefaultJobManager implements JobManager {
 	private final JobExecutorFactory executorFactory;
 	private final JobContext listener;
 	private final List<JobExecutor> activeExecutors;
+	private final List<JobExecutor> scheduledExecutors;
 	private final List<OneTimer> timers;
 
 	private volatile boolean started = false;
 	private volatile boolean stopping = false;
+	private final OneExecutor workThread;
 
 	@Override
 	public void start() {
@@ -54,22 +58,50 @@ public class DefaultJobManager implements JobManager {
 							if (activeExecutors.contains(executor)) {
 								return;
 							}
-							activeExecutors.add(executor);
+							if (scheduledExecutors.contains(executor)) {
+								return;
+							}
 
-							executor.run(new JobCallback() {
+							if (activeExecutors.size() > 0) {
+								scheduledExecutors.add(executor);
+								return;
+							}
 
-								@Override
-								public void onDone() {
+							runScheduledExecutors();
 
-									activeExecutors.remove(executor);
-								}
-							});
 						}
 					});
 			this.timers.add(jobTimer);
 		}
 
 		started = true;
+	}
+
+	private void runScheduledExecutors() {
+		if (scheduledExecutors.size() > 0) {
+			final JobExecutor newExecutor = scheduledExecutors.get(0);
+			scheduledExecutors.remove(0);
+
+			activeExecutors.add(newExecutor);
+			newExecutor.run(new JobCallback() {
+
+				@Override
+				public void onDone() {
+					activeExecutors.remove(newExecutor);
+
+					// start in new thread to avoid deep recursions
+					workThread.execute(new Runnable() {
+
+						@Override
+						public void run() {
+							runScheduledExecutors();
+						}
+					});
+
+				}
+			});
+
+		}
 	}
 
 	@Override
@@ -105,7 +137,18 @@ public class DefaultJobManager implements JobManager {
 		started = false;
 		stopping = false;
 
-		callback.onShutdownComplete();
+		workThread.shutdown(new WhenExecutorShutDown() {
+
+			@Override
+			public void thenDo() {
+				callback.onShutdownComplete();
+			}
+
+			@Override
+			public void onFailure(final Throwable t) {
+				callback.onFailure(t);
+			}
+		});
 
 	}
 
@@ -119,8 +162,12 @@ public class DefaultJobManager implements JobManager {
 		this.listener = jobContext;
 		this.executorFactory = executorFactory;
 		this.timers = new LinkedList<OneTimer>();
+		this.workThread = concurrency.newExecutor().newSingleThreadExecutor(
+				this);
 		this.activeExecutors = concurrency.newCollection().newThreadSafeList(
 				JobExecutor.class);
+		this.scheduledExecutors = concurrency.newCollection()
+				.newThreadSafeList(JobExecutor.class);
 	}
 
 }
