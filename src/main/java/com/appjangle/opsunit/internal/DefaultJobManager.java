@@ -90,6 +90,11 @@ public class DefaultJobManager implements JobManager {
 				public void onDone() {
 					activeExecutors.remove(newExecutor);
 
+					// don't do anything when component is stopping
+					if (stopping) {
+						return;
+					}
+
 					// start in new thread to avoid deep recursions
 					workThread.execute(new Runnable() {
 
