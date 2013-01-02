@@ -118,6 +118,11 @@ public class JUnitJobExecutor implements JobExecutor {
 			// running out of possible ways to fix this execution
 			if (responses.size() == 0) {
 
+				if (ENABLE_LOG) {
+					System.out.println(this + ": All responses exhaused: "
+							+ job.getName());
+				}
+
 				listener.getListener().onJobFailed(job, lastFailure);
 
 				callback.onDone();
@@ -131,10 +136,19 @@ public class JUnitJobExecutor implements JobExecutor {
 
 			remainingResponses.remove(0);
 
+			if (ENABLE_LOG) {
+				System.out.println(this + ": " + job.getName()
+						+ " Running response: " + response);
+			}
+
 			response.run(listener, new Callback() {
 
 				@Override
 				public void onSuccess() {
+					if (ENABLE_LOG) {
+						System.out.println(this + ": " + job.getName()
+								+ " Response completed: " + response);
+					}
 					new Thread() {
 
 						@Override
