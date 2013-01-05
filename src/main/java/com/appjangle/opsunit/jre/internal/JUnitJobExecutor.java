@@ -15,194 +15,194 @@ import com.appjangle.opsunit.Response.Callback;
 
 public class JUnitJobExecutor implements JobExecutor {
 
-	private final Job job;
-	private final JobContext listener;
+    private final Job job;
+    private final JobContext listener;
 
-	private final static boolean ENABLE_LOG = false;
+    private final static boolean ENABLE_LOG = false;
 
-	@Override
-	public void run(final JobCallback callback) {
-		listener.getListener().onStartJob(job);
-		runTests(job.getResponses(), callback);
-	}
+    @Override
+    public void run(final JobCallback callback) {
+        listener.getListener().onStartJob(job);
+        runTests(job.getResponses(), callback);
+    }
 
-	private final void runTests(final List<Response> availableResponses,
-			final JobCallback callback) {
+    private final void runTests(final List<Response> availableResponses,
+            final JobCallback callback) {
 
-		try {
-			for (final Class<?> test : job.getTests()) {
-				if (ENABLE_LOG) {
-					System.out.println(this + ": Run test: " + test);
-				}
-				listener.getListener().onStartTest(job, test);
+        try {
+            for (final Class<?> test : job.getTests()) {
+                if (ENABLE_LOG) {
+                    System.out.println(this + ": Run test: " + test);
+                }
+                listener.getListener().onStartTest(job, test);
 
-				final AtomicBoolean completed = new AtomicBoolean(false);
-				final AtomicBoolean crashed = new AtomicBoolean(false);
+                final AtomicBoolean completed = new AtomicBoolean(false);
+                final AtomicBoolean crashed = new AtomicBoolean(false);
 
-				new Thread() {
+                new Thread() {
 
-					@Override
-					public void run() {
+                    @Override
+                    public void run() {
 
-						final int timoutInMin = 10;
-						try {
+                        final int timoutInMin = 10;
+                        try {
 
-							Thread.sleep(1000 * 60 * timoutInMin);
-						} catch (final InterruptedException e) {
-							throw new RuntimeException(e);
-						}
+                            Thread.sleep(1000 * 60 * timoutInMin);
+                        } catch (final InterruptedException e) {
+                            throw new RuntimeException(e);
+                        }
 
-						if (!completed.get()) {
-							crashed.set(true);
+                        if (!completed.get()) {
+                            crashed.set(true);
 
-							final Exception e = new Exception("Test [" + test
-									+ "] not completed in timeout limit ("
-									+ timoutInMin + " min).");
-							listener.getListener().onTestFailed(
-									job,
-									test,
-									"Test has not been completed within timeout limit ("
-											+ timoutInMin + " min)", e);
+                            final Exception e = new Exception("Test [" + test
+                                    + "] not completed in timeout limit ("
+                                    + timoutInMin + " min).");
+                            listener.getListener().onTestFailed(
+                                    job,
+                                    test,
+                                    "Test has not been completed within timeout limit ("
+                                            + timoutInMin + " min)", e);
 
-							attemptFix(availableResponses, e, callback);
-						}
-					}
+                            attemptFix(availableResponses, e, callback);
+                        }
+                    }
 
-				}.start();
+                }.start();
 
-				final Result result = JUnitCore.runClasses(test);
+                final Result result = JUnitCore.runClasses(test);
 
-				completed.set(true);
+                completed.set(true);
 
-				if (crashed.get()) {
-					if (ENABLE_LOG) {
-						System.out.println(this
-								+ ": Test crashed due to violating timeout: "
-								+ test + " with " + result.getFailureCount()
-								+ " failures.");
-					}
-					return;
-				}
+                if (crashed.get()) {
+                    if (ENABLE_LOG) {
+                        System.out.println(this
+                                + ": Test crashed due to violating timeout: "
+                                + test + " with " + result.getFailureCount()
+                                + " failures.");
+                    }
+                    return;
+                }
 
-				if (ENABLE_LOG) {
-					System.out.println(this + ": Test ran: " + test + " with "
-							+ result.getFailureCount() + " failures.");
-				}
+                if (ENABLE_LOG) {
+                    System.out.println(this + ": Test ran: " + test + " with "
+                            + result.getFailureCount() + " failures.");
+                }
 
-				if (result.getFailureCount() > 0) {
-					listener.getListener().onTestFailed(job, test,
-							result.getFailures().get(0).getMessage(),
-							result.getFailures().get(0).getException());
+                if (result.getFailureCount() > 0) {
+                    listener.getListener().onTestFailed(job, test,
+                            result.getFailures().get(0).getMessage(),
+                            result.getFailures().get(0).getException());
 
-					attemptFix(availableResponses, result.getFailures().get(0)
-							.getException(), callback);
-					return;
-				}
-			}
-		} catch (final Throwable t) {
-			listener.getListener().onJobFailed(job,
-					new Exception("Could not run tests: " + job.getTests(), t));
-			callback.onDone();
-			return;
-		}
+                    attemptFix(availableResponses, result.getFailures().get(0)
+                            .getException(), callback);
+                    return;
+                }
+            }
+        } catch (final Throwable t) {
+            listener.getListener().onJobFailed(job,
+                    new Exception("Could not run tests: " + job.getTests(), t));
+            callback.onDone();
+            return;
+        }
 
-		listener.getListener().onJobSuccessfullyCompleted(job);
+        listener.getListener().onJobSuccessfullyCompleted(job);
 
-		callback.onDone();
+        callback.onDone();
 
-	}
+    }
 
-	private final void attemptFix(final List<Response> responses,
-			final Throwable lastFailure, final JobCallback callback) {
-		try {
-			// running out of possible ways to fix this execution
-			if (responses.size() == 0) {
+    private final void attemptFix(final List<Response> responses,
+            final Throwable lastFailure, final JobCallback callback) {
+        try {
+            // running out of possible ways to fix this execution
+            if (responses.size() == 0) {
 
-				if (ENABLE_LOG) {
-					System.out.println(this + ": All responses exhaused: "
-							+ job.getName());
-				}
+                if (ENABLE_LOG) {
+                    System.out.println(this + ": All responses exhaused: "
+                            + job.getName());
+                }
 
-				listener.getListener().onJobFailed(job, lastFailure);
+                listener.getListener().onJobFailed(job, lastFailure);
 
-				callback.onDone();
-				return;
-			}
+                callback.onDone();
+                return;
+            }
 
-			final Response response = responses.get(0);
+            final Response response = responses.get(0);
 
-			final List<Response> remainingResponses = new ArrayList<Response>(
-					responses);
+            final List<Response> remainingResponses = new ArrayList<Response>(
+                    responses);
 
-			remainingResponses.remove(0);
+            remainingResponses.remove(0);
 
-			if (ENABLE_LOG) {
-				System.out.println(this + ": " + job.getName()
-						+ " Running response: " + response);
-			}
+            if (ENABLE_LOG) {
+                System.out.println(this + ": " + job.getName()
+                        + " Running response: " + response);
+            }
 
-			response.run(listener, new Callback() {
+            response.run(listener, new Callback() {
 
-				@Override
-				public void onSuccess() {
-					if (ENABLE_LOG) {
-						System.out.println(this + ": " + job.getName()
-								+ " Response completed: " + response);
-					}
-					new Thread() {
+                @Override
+                public void onSuccess() {
+                    if (ENABLE_LOG) {
+                        System.out.println(this + ": " + job.getName()
+                                + " Response completed: " + response);
+                    }
+                    new Thread() {
 
-						@Override
-						public void run() {
-							runTests(remainingResponses, callback);
-						}
+                        @Override
+                        public void run() {
+                            runTests(remainingResponses, callback);
+                        }
 
-					}.start();
+                    }.start();
 
-				}
+                }
 
-				@Override
-				public void onFailure(final Throwable t) {
-					listener.getListener().onResponseFailed(job, response, t);
-					new Thread() {
+                @Override
+                public void onFailure(final Throwable t) {
+                    listener.getListener().onResponseFailed(job, response, t);
+                    new Thread() {
 
-						@Override
-						public void run() {
-							runTests(remainingResponses, callback);
-						}
+                        @Override
+                        public void run() {
+                            runTests(remainingResponses, callback);
+                        }
 
-					}.start();
-				}
-			});
-		} catch (final Throwable t) {
-			listener.getListener()
-					.onJobFailed(
-							job,
-							new Exception("Could not apply responses: "
-									+ responses, t));
-			callback.onDone();
-			return;
-		}
+                    }.start();
+                }
+            });
+        } catch (final Throwable t) {
+            listener.getListener()
+                    .onJobFailed(
+                            job,
+                            new Exception("Could not apply responses: "
+                                    + responses, t));
+            callback.onDone();
+            return;
+        }
 
-	}
+    }
 
-	public JUnitJobExecutor(final Job job, final JobContext context) {
-		super();
-		this.job = job;
-		this.listener = context;
+    public JUnitJobExecutor(final Job job, final JobContext context) {
+        super();
+        this.job = job;
+        this.listener = context;
 
-		// verifying instantiability of test cases
-		for (final Class<?> test : job.getTests()) {
+        // verifying instantiability of test cases
+        for (final Class<?> test : job.getTests()) {
 
-			try {
-				final Object newInstance = test.getConstructors()[0]
-						.newInstance();
-				assert newInstance != null;
-				// System.out.println("created " + newInstance);
-			} catch (final Throwable e) {
-				throw new RuntimeException(e);
-			}
+            try {
+                final Object newInstance = test.getConstructors()[0]
+                        .newInstance();
+                assert newInstance != null;
+                // System.out.println("created " + newInstance);
+            } catch (final Throwable e) {
+                throw new RuntimeException(e);
+            }
 
-		}
+        }
 
-	}
+    }
 }
