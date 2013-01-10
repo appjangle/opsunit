@@ -15,6 +15,55 @@ import com.appjangle.opsunit.Response.Callback;
 
 public class JUnitJobExecutor implements JobExecutor {
 
+    private final class MonitorTimeoutThread extends Thread {
+        private final AtomicBoolean crashed;
+        private final JobCallback callback;
+        private final List<Response> availableResponses;
+        private final AtomicBoolean completed;
+        private final Class<?> test;
+
+        private MonitorTimeoutThread(final AtomicBoolean crashed,
+                final JobCallback callback,
+                final List<Response> availableResponses,
+                final AtomicBoolean completed, final Class<?> test) {
+            this.crashed = crashed;
+            this.callback = callback;
+            this.availableResponses = availableResponses;
+            this.completed = completed;
+            this.test = test;
+        }
+
+        @Override
+        public void run() {
+
+            final int timeoutInMin = 10;
+            int count = 0;
+            try {
+                while (count <= timeoutInMin * 4 && !completed.get()) {
+                    Thread.sleep(1000 * 15);
+                    count++;
+                }
+            } catch (final InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+
+            if (!completed.get()) {
+                crashed.set(true);
+
+                final Exception e = new Exception("Test [" + test
+                        + "] not completed in timeout limit (" + timeoutInMin
+                        + " min).");
+                listener.getListener().onTestFailed(
+                        job,
+                        test,
+                        "Test has not been completed within timeout limit ("
+                                + timeoutInMin + " min)", e);
+
+                attemptFix(availableResponses, e, callback);
+            }
+        }
+    }
+
     private final Job job;
     private final JobContext listener;
 
@@ -39,36 +88,8 @@ public class JUnitJobExecutor implements JobExecutor {
                 final AtomicBoolean completed = new AtomicBoolean(false);
                 final AtomicBoolean crashed = new AtomicBoolean(false);
 
-                new Thread() {
-
-                    @Override
-                    public void run() {
-
-                        final int timoutInMin = 10;
-                        try {
-
-                            Thread.sleep(1000 * 60 * timoutInMin);
-                        } catch (final InterruptedException e) {
-                            throw new RuntimeException(e);
-                        }
-
-                        if (!completed.get()) {
-                            crashed.set(true);
-
-                            final Exception e = new Exception("Test [" + test
-                                    + "] not completed in timeout limit ("
-                                    + timoutInMin + " min).");
-                            listener.getListener().onTestFailed(
-                                    job,
-                                    test,
-                                    "Test has not been completed within timeout limit ("
-                                            + timoutInMin + " min)", e);
-
-                            attemptFix(availableResponses, e, callback);
-                        }
-                    }
-
-                }.start();
+                new MonitorTimeoutThread(crashed, callback, availableResponses,
+                        completed, test).start();
 
                 final Result result = JUnitCore.runClasses(test);
 
